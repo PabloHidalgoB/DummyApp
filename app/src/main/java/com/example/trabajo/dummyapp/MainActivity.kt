@@ -6,17 +6,13 @@ import android.os.Environment
 import android.os.FileObserver
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import java.io.File
-import java.io.IOException
-import android.widget.Toast
-
-
+import java.io.*
 
 
 class MainActivity : AppCompatActivity() {
 
-    private val ACTIVATEADB = "setprop persist.sys.usb.config mtp,adb"
-    private val MOUNTMTP = "adb shell svc usb setFunction mtp"
+    private val ACTIVATEADB = "setprop persist.sys.usb.config ptp,adb"
+    private val MOUNTMTP = "adb shell svc usb setFunction ptp"
 
 
     private val mLocalDownloadDirectory = "${Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)}"
@@ -24,6 +20,7 @@ class MainActivity : AppCompatActivity() {
 
     val TAG = "DummyApp"
 
+    private var mFile: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,41 +29,21 @@ class MainActivity : AppCompatActivity() {
         runAdbCommands(ACTIVATEADB)
         runAdbCommands(MOUNTMTP)
 
-
-        /*var state = Environment.getExternalStorageState()
-
-        var shared = Environment.MEDIA_MOUNTED
-
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            // Sd card has connected to PC in MSC mode
-
-            Log.d(TAG, "==> TRUE")
-
-        } else {
-
-            Log.d(TAG, "==> FALSE")
-
-        }*/
-
         // 1.- implementar un metodo que detecte los cambios en un archivo local
         // - Environent.DOWNLOAD_DIRECTORY
         // - val mFile = File("ruta")
         // - val mFileObserver = u otra clase que detecte los cambios
 
-        val mFile = File(mLocalDownloadDirectory, "hola.txt")
+        mFile = File(mLocalDownloadDirectory, "command.txt")
 
 
-        val fileObserver = object : FileObserver(mFile.canonicalPath) {
+        val fileObserver = object : FileObserver(mFile!!.canonicalPath) {
             override fun onEvent(event: Int, path: String?) {
-
+                //Log.d(TAG, event.toString())
                 when (event) {
-                    FileObserver.CREATE -> Log.d(ContentValues.TAG, "CREATE:")
-                    FileObserver.DELETE -> Log.d(ContentValues.TAG, "DELETE:")
-                    FileObserver.DELETE_SELF -> Log.d(ContentValues.TAG, "DELETE_SELF:")
-                    FileObserver.MODIFY -> Log.d(ContentValues.TAG, "MODIFY:")
-                    FileObserver.MOVED_FROM -> Log.d(ContentValues.TAG, "MOVED_FROM:")
-                    FileObserver.MOVED_TO -> Log.d(ContentValues.TAG, "MOVED_TO:")
-                    FileObserver.MOVE_SELF -> Log.d(ContentValues.TAG, "MOVE_SELF:")
+                    FileObserver.CLOSE_WRITE -> {
+                        readCommand()
+                    }
                     else -> {
                     }
                 }// just ignore
@@ -79,6 +56,64 @@ class MainActivity : AppCompatActivity() {
         // 2.- Ejecutar un comando en un directorio
         // 3.- Ejecutar un Sh file en un directorio de la tablet
 
+
+    }
+
+    private fun readCommand() {
+        try {
+
+            when {
+                !mFile!!.exists() -> {
+                    //LibraryUtilities.showToastMessage(this, getString(R.string.message_file_not_exist, "logpipe.txt"))
+                }
+                else -> {
+                    //Get the text file
+                    val mFileInputStream = FileInputStream(mFile)
+                    val mDataInputStream = DataInputStream(mFileInputStream)
+                    val mBufferReader = BufferedReader(InputStreamReader(mDataInputStream))
+                    val mText = StringBuilder()
+
+                    mBufferReader.forEachLine {
+                        mText.append(it)
+                        mText.append('\n')
+                    }
+                    mBufferReader.close()
+
+                    if (!mText.toString().isEmpty()) {
+                        Log.d(TAG, "==> Contenido: $mText")
+                        //pocesslin(mtext)
+                    }
+                }
+            }
+
+        } catch (eio: IOException) {
+            eio.printStackTrace()
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun getText (): String {
+
+        //Read text from file
+        val text = StringBuilder()
+
+        try {
+            val br = BufferedReader(FileReader(mFile))
+
+            var line: String? = br.readLine()
+            while (line != null) {
+                text.append(line)
+                line = br.readLine()
+            }
+
+            br.close()
+        } catch (e: Exception) {
+            System.err.println("Error: Target File Cannot Be Read")
+        }
+
+        return text.toString()
 
     }
 
